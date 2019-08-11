@@ -4,6 +4,7 @@
 
 ;; Author: Chunyang Xu <xuchunyang56@gmail.com>
 ;; URL: https://github.com/xuchunyang/chinese-word-at-point.el
+;; Package-Version: 20170811.941
 ;; Package-Requires: ((cl-lib "0.5"))
 ;; Version: 0.2.3
 ;; Created: 9 Jan 2015
@@ -43,9 +44,19 @@
 
 (require 'cl-lib)
 (require 'thingatpt)
+(require 'sinoword-friso-api)
 
+;; (defvar chinese-word-split-command
+;;   "echo %s | python3 -m jieba -q -d ' '"
+;;   "Set command for Chinese text segmentation.
+
+;; The result should separated by one space.
+
+;; I know two Chinese word segmentation tools, which have command line
+;; interface, are jieba (结巴中文分词) and scws, both of them are hosting
+;; on Github.")
 (defvar chinese-word-split-command
-  "echo %s | python -m jieba -q -d ' '"
+  "cd /Users/c/Github/friso/src/ && echo %s | ./friso && cd -"
   "Set command for Chinese text segmentation.
 
 The result should separated by one space.
@@ -72,22 +83,25 @@ Return Chinese words as a string separated by one space"
   "Return the bounds of the (most likely) Chinese word at point."
   (save-excursion
     (let ((current-word (thing-at-point 'word)))
-      (when (and current-word (chinese-word-chinese-string-p current-word))
+      (if (and current-word (chinese-word-chinese-string-p current-word))
         (let* ((boundary (bounds-of-thing-at-point 'word))
                (beginning-pos (car boundary))
                (end-pos (cdr boundary))
                (current-pos (point))
                (index beginning-pos)
                (old-index beginning-pos))
-          (cl-dolist (word (split-string (chinese-word--split-by-space
-                                          current-word)))
+          ;; (cl-dolist (word (split-string (chinese-word--split-by-space
+          (cl-dolist (word (append (sinoword-split-words
+                                          current-word) nil))
             (cl-incf index (length word))
             (if (and (>= current-pos old-index)
                      (< current-pos index))
                 (cl-return (cons old-index index))
               (if (= index end-pos)       ; When point is just behind word
                   (cl-return (cons old-index index)))
-              (setq old-index index))))))))
+              (setq old-index index))))
+        (bounds-of-thing-at-point 'word)
+        ))))
 
 (put 'chinese-word 'bounds-of-thing-at-point 'chinese-word-at-point-bounds)
 
